@@ -1,0 +1,9 @@
+local-files/
+n8n-data/
+waha1/
+waha2/
+cloudflared/cert.pem
+cloudflared/config.yml
+.env
+
+.idea/
