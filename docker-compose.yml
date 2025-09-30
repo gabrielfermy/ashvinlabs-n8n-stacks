@@ -46,43 +46,6 @@ services:
       qdrant:
         condition: service_started
 
-  waha1:
-    image: devlikeapro/waha
-    container_name: ${WAHA_CONTAINER_NAME}_${PROJECT_INITIAL}
-    restart: always
-    ports:
-      - "127.0.0.1:${WAHA_PUBLIC_PORT}:3000"
-    environment:
-      - WAHA_API_KEY=${WAHA_API_KEY}
-      - WAHA_BASE_URL=https://${WAHA_SUBDOMAIN}.${DOMAIN_NAME}
-      - WHATSAPP_SWAGGER_ENABLED=false
-      - WAHA_DASHBOARD_USERNAME=${WAHA_DASHBOARD_USER}
-      - WAHA_DASHBOARD_PASSWORD=${WAHA_DASHBOARD_PASSWORD}
-      - TZ=${GENERIC_TIMEZONE}
-    volumes:
-      - ./waha1/.sessions:/app/.sessions
-    networks:
-      - n8n-network
-
-  waha2:
-    image: devlikeapro/waha
-    container_name: ${WAHA2_CONTAINER_NAME}_${PROJECT_INITIAL}
-    restart: always
-    ports:
-      - "127.0.0.1:${WAHA2_PUBLIC_PORT}:3000"
-    environment:
-      - WAHA_API_KEY=${WAHA_API_KEY}
-      - WAHA_BASE_URL=https://${WAHA2_SUBDOMAIN}.${DOMAIN_NAME}
-      - WHATSAPP_SWAGGER_ENABLED=false
-      - WAHA_DASHBOARD_USERNAME=${WAHA2_DASHBOARD_USER}
-      - WAHA_DASHBOARD_PASSWORD=${WAHA2_DASHBOARD_PASSWORD}
-      - TZ=${GENERIC_TIMEZONE}
-
-    volumes:
-      - ./waha2/.sessions:/app/.sessions
-    networks:
-      - n8n-network
-
   postgres_n8n:
     image: postgres:15
     container_name: ${N8N_DB_CONTAINER_NAME}_${PROJECT_INITIAL}
