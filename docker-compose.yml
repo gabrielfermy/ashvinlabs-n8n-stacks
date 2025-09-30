@@ -23,8 +23,7 @@ services:
       - NODE_ENV=production
       - WEBHOOK_URL=https://${WEBHOOK_SUBDOMAIN}.${DOMAIN_NAME}/
       - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
-      - N8N_ALLOWED_HOSTNAMES=${N8N_SUBDOMAIN}.${DOMAIN_NAME},${WEBHOOK_SUBDOMAIN}.${DOMAIN_NAME},${WAHA_SUBDOMAIN}
-      - .${DOMAIN_NAME},${WAHA2_SUBDOMAIN}.${DOMAIN_NAME}
+      - N8N_ALLOWED_HOSTNAMES=${N8N_SUBDOMAIN}.${DOMAIN_NAME},${WEBHOOK_SUBDOMAIN}.${DOMAIN_NAME}
       - N8N_EDITOR_BASE_URL=https://${N8N_SUBDOMAIN}.${DOMAIN_NAME}/
       - N8N_PAYLOAD_SIZE_MAX=64
       - DB_TYPE=postgresdb
@@ -130,10 +129,6 @@ services:
       - n8n-network
     depends_on:
       n8n:
-        condition: service_started
-      waha1:
-        condition: service_started
-      waha2:
         condition: service_started
       qdrant:
         condition: service_started
