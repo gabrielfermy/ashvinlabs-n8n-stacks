@@ -1,25 +1,28 @@
 #!/bin/sh
+set -e # Exit immediately if a command exits with a non-zero status.
 
 # This script initializes Qdrant collections using curl to interact with the REST API.
-# It is a direct functional equivalent of the Python script.
 
-# Set the Qdrant host, defaulting to localhost.
+# 1. VERIFY API KEY
+# Stop immediately if the QDRANT_API_KEY is not available in the container.
+if [ -z "$QDRANT_API_KEY" ]; then
+  echo "[ERROR] QDRANT_API_KEY environment variable is not set. Please check your .env file and docker-compose configuration."
+  exit 1
+fi
+
+# Set variables
 QDRANT_HOST="${QDRANT_HOST:-http://qdrant:6333}"
-
-# Define the embedding vector size. This should match your model.
 VECTOR_SIZE=768
-
-# Define the collections to be created.
 COLLECTIONS="user_knowledge group_knowledge general_knowledge"
 
 # Loop through each collection name.
 for COLLECTION_NAME in $COLLECTIONS; do
+    echo "---"
     echo "Checking for collection: $COLLECTION_NAME"
 
-    # Use curl to check if the collection exists. The -s flag makes curl silent.
-    # The -o /dev/null redirects the body to nowhere.
-    # The -w "%{http_code}" prints the HTTP response code.
-    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$QDRANT_HOST/collections/$COLLECTION_NAME")
+    # 2. CHECK IF COLLECTION EXISTS
+    # Use curl to check if the collection exists, passing the API key.
+    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "api-key: ${QDRANT_API_KEY}" "$QDRANT_HOST/collections/$COLLECTION_NAME")
 
     if [ "$HTTP_STATUS" -eq 200 ]; then
         echo "Collection '$COLLECTION_NAME' already exists. Skipping creation."
@@ -27,22 +30,34 @@ for COLLECTION_NAME in $COLLECTIONS; do
         echo "Collection '$COLLECTION_NAME' does not exist. Creating now..."
 
         # Construct the JSON payload for the create request.
-        # The 'vectors' key is now a nested JSON object.
-        JSON_PAYLOAD='{"vectors": {"size": '$VECTOR_SIZE', "distance": "Cosine", "on_disk": true}}'
+        JSON_PAYLOAD=$(printf '{"vectors":{"size":%d,"distance":"Cosine","on_disk":true}}' "$VECTOR_SIZE")
 
-        # Use curl with a PUT request to create the collection.
-        # The -X PUT specifies the request method.
-        # The -H sets the Content-Type header to application/json.
-        # The -d passes the JSON payload.
-        # The output of the command will show the creation status.
-        curl -s -X PUT \
+        # 3. CREATE THE COLLECTION
+        # Use curl with a PUT request, checking the response code directly.
+        CREATE_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X PUT \
              -H "Content-Type: application/json" \
+             -H "api-key: ${QDRANT_API_KEY}" \
              -d "$JSON_PAYLOAD" \
-             "$QDRANT_HOST/collections/$COLLECTION_NAME"
+             "$QDRANT_HOST/collections/$COLLECTION_NAME")
 
-        echo "" # Add a newline for better formatting.
-        echo "Collection '$COLLECTION_NAME' created successfully."
+        # 4. VERIFY CREATION
+        # Check if the creation was successful (HTTP 200 OK).
+        if [ "$CREATE_STATUS" -eq 200 ]; then
+            echo "Collection '$COLLECTION_NAME' created successfully."
+        else
+            echo "[ERROR] Failed to create collection '$COLLECTION_NAME'. Qdrant returned HTTP status: $CREATE_STATUS"
+            echo "[ERROR] Qdrant's response was:"
+            # Run the command again, but this time print the output from Qdrant for debugging.
+            curl -s -X PUT \
+                 -H "Content-Type: application/json" \
+                 -H "api-key: ${QDRANT_API_KEY}" \
+                 -d "$JSON_PAYLOAD" \
+                 "$QDRANT_HOST/collections/$COLLECTION_NAME"
+            echo "" # Newline for readability
+            exit 1 # Exit with an error code to stop the process.
+        fi
     fi
 done
 
+echo "---"
 echo "Qdrant initialization complete."

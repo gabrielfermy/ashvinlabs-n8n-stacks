@@ -23,8 +23,7 @@ services:
       - NODE_ENV=production
       - WEBHOOK_URL=https://${WEBHOOK_SUBDOMAIN}.${DOMAIN_NAME}/
       - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
-      - N8N_ALLOWED_HOSTNAMES=${N8N_SUBDOMAIN}.${DOMAIN_NAME},${WEBHOOK_SUBDOMAIN}.${DOMAIN_NAME},${WAHA_SUBDOMAIN}
-      - .${DOMAIN_NAME},${WAHA2_SUBDOMAIN}.${DOMAIN_NAME}
+      - N8N_ALLOWED_HOSTNAMES=${N8N_SUBDOMAIN}.${DOMAIN_NAME},${WEBHOOK_SUBDOMAIN}.${DOMAIN_NAME}
       - N8N_EDITOR_BASE_URL=https://${N8N_SUBDOMAIN}.${DOMAIN_NAME}/
       - N8N_PAYLOAD_SIZE_MAX=64
       - DB_TYPE=postgresdb
@@ -45,43 +44,6 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_started
-
-  waha1:
-    image: devlikeapro/waha
-    container_name: ${WAHA_CONTAINER_NAME}_${PROJECT_INITIAL}
-    restart: always
-    ports:
-      - "127.0.0.1:${WAHA_PUBLIC_PORT}:3000"
-    environment:
-      - WAHA_API_KEY=${WAHA_API_KEY}
-      - WAHA_BASE_URL=https://${WAHA_SUBDOMAIN}.${DOMAIN_NAME}
-      - WHATSAPP_SWAGGER_ENABLED=false
-      - WAHA_DASHBOARD_USERNAME=${WAHA_DASHBOARD_USER}
-      - WAHA_DASHBOARD_PASSWORD=${WAHA_DASHBOARD_PASSWORD}
-      - TZ=${GENERIC_TIMEZONE}
-    volumes:
-      - ./waha1/.sessions:/app/.sessions
-    networks:
-      - n8n-network
-
-  waha2:
-    image: devlikeapro/waha
-    container_name: ${WAHA2_CONTAINER_NAME}_${PROJECT_INITIAL}
-    restart: always
-    ports:
-      - "127.0.0.1:${WAHA2_PUBLIC_PORT}:3000"
-    environment:
-      - WAHA_API_KEY=${WAHA_API_KEY}
-      - WAHA_BASE_URL=https://${WAHA2_SUBDOMAIN}.${DOMAIN_NAME}
-      - WHATSAPP_SWAGGER_ENABLED=false
-      - WAHA_DASHBOARD_USERNAME=${WAHA2_DASHBOARD_USER}
-      - WAHA_DASHBOARD_PASSWORD=${WAHA2_DASHBOARD_PASSWORD}
-      - TZ=${GENERIC_TIMEZONE}
-
-    volumes:
-      - ./waha2/.sessions:/app/.sessions
-    networks:
-      - n8n-network
 
   postgres_n8n:
     image: postgres:15
@@ -120,7 +82,7 @@ services:
     networks:
       - n8n-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U chat -d chat_memory"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_CHAT_DB_USER} -d public"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -149,6 +111,8 @@ services:
         condition: service_started
     networks:
       - n8n-network
+    environment:
+      - QDRANT_API_KEY=${QDRANT_API_KEY}
     volumes:
       - ./qdrant-init.sh:/qdrant-init.sh
     entrypoint: ["sh", "/qdrant-init.sh"]
@@ -168,12 +132,10 @@ services:
     depends_on:
       n8n:
         condition: service_started
-      waha1:
-        condition: service_started
-      waha2:
-        condition: service_started
       qdrant:
         condition: service_started
+      postgres_chat:
+        condition: service_healthy
 
 networks:
   n8n-network:

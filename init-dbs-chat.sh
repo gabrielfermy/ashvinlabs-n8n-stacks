@@ -2,12 +2,30 @@
 set -e
 
 echo "--- [START] Running custom initialization script (init-dbs-chat.sh) ---"
-echo "Configuring 'chat_memory' database (STM schema with WA mapping) ..."
+echo "Creating '$POSTGRES_DB' database if it does not exist..."
+
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "postgres" <<-EOSQL
+    SELECT 'CREATE DATABASE "' || '$POSTGRES_DB' || '"'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$POSTGRES_DB')\gexec
+EOSQL
+
+echo "Configuring '$POSTGRES_DB' database (STM schema with WA mapping) ..."
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
--- Create role and grant privileges
-CREATE ROLE chat LOGIN PASSWORD '$POSTGRES_PASSWORD';
-GRANT ALL PRIVILEGES ON DATABASE $POSTGRES_DB TO chat;
+-- Create role if it doesn't exist
+DO
+\$do\$
+BEGIN
+   IF NOT EXISTS (
+      SELECT FROM pg_catalog.pg_roles
+      WHERE  rolname = 'chat') THEN
+
+      CREATE ROLE chat LOGIN PASSWORD '$POSTGRES_PASSWORD';
+   END IF;
+END
+\$do\$;
+
+GRANT ALL PRIVILEGES ON DATABASE "$POSTGRES_DB" TO chat;
 
 -- PostgreSQL Schema for Conversational AI Memory
 
@@ -126,5 +144,5 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO chat;
 
 EOSQL
 
-echo "--- [SUCCESS] 'chat_memory' database configured with extended schema. ---"
+echo "--- [SUCCESS] '$POSTGRES_DB' database configured with extended schema. ---"
 echo "--- [COMPLETE] PostgreSQL initialization finished. ---"
